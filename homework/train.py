@@ -5,6 +5,7 @@ from pathlib import Path
 import numpy as np
 import torch
 import torch.utils.tensorboard as tb
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 from .models import ClassificationLoss, load_model, save_model
 from .utils import load_data
@@ -17,6 +18,8 @@ def train(
     lr: float = 1e-3,
     batch_size: int = 128,
     seed: int = 2024,
+    momentum: float = 0.9,
+    weight_decay: float = 1e-5,
     **kwargs,
 ):
     if torch.cuda.is_available():
@@ -45,7 +48,8 @@ def train(
 
     # create loss function and optimizer
     loss_func = ClassificationLoss()
-    # optimizer = ...
+    optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=momentum, weight_decay=weight_decay)
+    # scheduler = ReduceLROnPlateau(optimizer, mode='max', factor=0.5, patience=3)
 
     global_step = 0
     metrics = {"train_acc": [], "val_acc": []}
@@ -60,10 +64,17 @@ def train(
 
         for img, label in train_data:
             img, label = img.to(device), label.to(device)
+            pred = model(img)
+            loss = loss_func(pred, label)
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
 
-            # TODO: implement training step
-            raise NotImplementedError("Training step not implemented")
-
+            predict_class_ind = torch.max(pred, 1).indices
+            correct_count = (predict_class_ind == label).sum().item()
+            accuracy = correct_count / label.size(0)
+            metrics["train_acc"].append(accuracy)
+            logger.add_scalar('train_loss', loss.item(), global_step)
             global_step += 1
 
         # disable gradient computation and switch to evaluation mode
@@ -74,13 +85,19 @@ def train(
                 img, label = img.to(device), label.to(device)
 
                 # TODO: compute validation accuracy
-                raise NotImplementedError("Validation accuracy not implemented")
+                pred = model(img)
+                predict_class_ind = torch.max(pred, 1).indices
+                correct_count = (predict_class_ind == label).sum().item()
+                accuracy = correct_count / label.size(0)
+                metrics["val_acc"].append(accuracy)
 
         # log average train and val accuracy to tensorboard
         epoch_train_acc = torch.as_tensor(metrics["train_acc"]).mean()
         epoch_val_acc = torch.as_tensor(metrics["val_acc"]).mean()
 
-        raise NotImplementedError("Logging not implemented")
+        logger.add_scalar('train_accuracy', epoch_train_acc, global_step - 1)
+        logger.add_scalar('val_accuracy', epoch_val_acc, global_step - 1)
+        # scheduler.step(epoch_val_acc)
 
         # print on first, last, every 10th epoch
         if epoch == 0 or epoch == num_epoch - 1 or (epoch + 1) % 10 == 0:
@@ -108,7 +125,9 @@ if __name__ == "__main__":
     parser.add_argument("--seed", type=int, default=2024)
 
     # optional: additional model hyperparamters
-    # parser.add_argument("--num_layers", type=int, default=3)
+    parser.add_argument("--batch_size", type=int, default=128, help="Batch size for training")
+    parser.add_argument("--momentum", type=float, default=0.9, help="SGD momentum")
+    parser.add_argument("--weight_decay", type=float, default=1e-5, help="Weight decay")
 
     # pass all arguments to train
     train(**vars(parser.parse_args()))
