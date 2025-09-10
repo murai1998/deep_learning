@@ -150,7 +150,7 @@ class MLPClassifierDeepResidual(nn.Module):
         def __init__(self, in_channels, out_channels, dropout_rate=0.0):
             super().__init__()
             self.linear = nn.Linear(in_channels, out_channels)
-            self.norm = nn.BatchNorm1d(out_channels)
+            self.norm = nn.LayerNorm(out_channels)
             self.relu = nn.ReLU()
             if in_channels != out_channels:
                 self.skip = nn.Linear(in_channels, out_channels)
@@ -176,8 +176,8 @@ class MLPClassifierDeepResidual(nn.Module):
         w: int = 64,
         num_classes: int = 6,
         hidden_dim: int = 100,
-        num_layers: int = 10,
-        dropout_rate: float = 0.4,
+        num_layers: int = 6,
+        dropout_rate: float = 0.3,
     ):
         """
         Args:
