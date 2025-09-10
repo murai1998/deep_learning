@@ -14,12 +14,12 @@ from .utils import load_data
 def train(
     exp_dir: str = "logs",
     model_name: str = "linear",
-    num_epoch: int = 50,
+    num_epoch: int = 110,
     lr: float = 1e-3,
     batch_size: int = 128,
     seed: int = 2024,
     momentum: float = 0.9,
-    weight_decay: float = 1e-5,
+    weight_decay: float = 2e-3,
     **kwargs,
 ):
     if torch.cuda.is_available():
@@ -120,14 +120,14 @@ if __name__ == "__main__":
 
     parser.add_argument("--exp_dir", type=str, default="logs")
     parser.add_argument("--model_name", type=str, required=True)
-    parser.add_argument("--num_epoch", type=int, default=50)
-    parser.add_argument("--lr", type=float, default=1e-3)
+    parser.add_argument("--num_epoch", type=int, default=110)
+    parser.add_argument("--lr", type=float, default=2e-3)
     parser.add_argument("--seed", type=int, default=2024)
 
     # optional: additional model hyperparamters
     parser.add_argument("--batch_size", type=int, default=128, help="Batch size for training")
     parser.add_argument("--momentum", type=float, default=0.9, help="SGD momentum")
-    parser.add_argument("--weight_decay", type=float, default=1e-5, help="Weight decay")
+    parser.add_argument("--weight_decay", type=float, default=1e-3, help="Weight decay")
 
     # pass all arguments to train
     train(**vars(parser.parse_args()))
