@@ -22,6 +22,20 @@ def train(
     weight_decay: float = 2e-3,
     **kwargs,
 ):
+    hyperparams = {
+        "linear": {"lr": 1e-3, "batch_size": 128, "num_epoch": 110, "weight_decay": 1e-5, "momentum": 0.9},
+        "mlp": {"lr": 2e-3, "batch_size": 64, "num_epoch": 110, "weight_decay": 1e-4, "momentum": 0.9},
+        "mlp_deep": {"lr": 1e-3, "batch_size": 64, "num_epoch": 100, "weight_decay": 1e-3, "momentum": 0.9},
+        "mlp_deep_residual": {"lr": 2e-3, "batch_size": 64, "num_epoch": 100, "weight_decay": 1e-3, "momentum": 0.9},
+    }
+
+    if model_name in hyperparams:
+        lr = hyperparams[model_name].get("lr", lr)
+        batch_size = hyperparams[model_name].get("batch_size", batch_size)
+        num_epoch = hyperparams[model_name].get("num_epoch", num_epoch)
+        weight_decay = hyperparams[model_name].get("weight_decay", weight_decay)
+        momentum = hyperparams[model_name].get("momentum", momentum)
+
     if torch.cuda.is_available():
         device = torch.device("cuda")
     elif torch.backends.mps.is_available() and torch.backends.mps.is_built():
@@ -49,7 +63,6 @@ def train(
     # create loss function and optimizer
     loss_func = ClassificationLoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=momentum, weight_decay=weight_decay)
-    # scheduler = ReduceLROnPlateau(optimizer, mode='max', factor=0.5, patience=3)
 
     global_step = 0
     metrics = {"train_acc": [], "val_acc": []}
@@ -84,7 +97,7 @@ def train(
             for img, label in val_data:
                 img, label = img.to(device), label.to(device)
 
-                # TODO: compute validation accuracy
+                # compute validation accuracy
                 pred = model(img)
                 predict_class_ind = torch.max(pred, 1).indices
                 correct_count = (predict_class_ind == label).sum().item()
@@ -97,7 +110,6 @@ def train(
 
         logger.add_scalar('train_accuracy', epoch_train_acc, global_step - 1)
         logger.add_scalar('val_accuracy', epoch_val_acc, global_step - 1)
-        # scheduler.step(epoch_val_acc)
 
         # print on first, last, every 10th epoch
         if epoch == 0 or epoch == num_epoch - 1 or (epoch + 1) % 10 == 0:
@@ -125,9 +137,9 @@ if __name__ == "__main__":
     parser.add_argument("--seed", type=int, default=2024)
 
     # optional: additional model hyperparamters
-    parser.add_argument("--batch_size", type=int, default=128, help="Batch size for training")
-    parser.add_argument("--momentum", type=float, default=0.9, help="SGD momentum")
-    parser.add_argument("--weight_decay", type=float, default=1e-3, help="Weight decay")
+    parser.add_argument("--batch_size", type=int, default=128)
+    parser.add_argument("--momentum", type=float, default=0.9)
+    parser.add_argument("--weight_decay", type=float, default=1e-3)
 
     # pass all arguments to train
     train(**vars(parser.parse_args()))
